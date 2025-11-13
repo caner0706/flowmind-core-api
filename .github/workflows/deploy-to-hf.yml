@@ -1,0 +1,26 @@
+name: Deploy to Hugging Face Space (backend)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set git identity
+        run: |
+          git config --global user.name "FlowMind CI"
+          git config --global user.email "ci@flowmind.local"
+
+      - name: Push to Hugging Face Space
+        run: |
+          # Hugging Face Space remote'unu ekle
+          git remote add hf https://Caner7:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/flowmind-ai/flowmind-core-api
+
+          # main branch'i HF Space'e force push et
+          git push hf HEAD:main --force
