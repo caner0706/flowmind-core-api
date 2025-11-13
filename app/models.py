@@ -1,3 +1,5 @@
+# app/models.py
+
 from datetime import datetime
 
 from sqlalchemy import (
@@ -253,7 +255,7 @@ class WorkflowRun(Base, TimestampMixin):
 class WorkflowRunStep(Base, TimestampMixin):
     __tablename__ = "workflow_run_steps"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary key=True, index=True)
     run_id = Column(Integer, ForeignKey("workflow_runs.id"), nullable=False)
     node_id = Column(Integer, ForeignKey("workflow_nodes.id"), nullable=False)
 
@@ -283,7 +285,7 @@ class WorkflowRunStep(Base, TimestampMixin):
 class ChatSession(Base, TimestampMixin):
     __tablename__ = "chat_sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary key=True, index=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=True)
@@ -305,7 +307,7 @@ class ChatSession(Base, TimestampMixin):
 class ChatMessage(Base, TimestampMixin):
     __tablename__ = "chat_messages"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary key=True, index=True)
     session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
 
     role = Column(String(50), nullable=False)  # user, assistant, system
@@ -323,7 +325,7 @@ class ChatMessage(Base, TimestampMixin):
 class IntegrationProvider(Base, TimestampMixin):
     __tablename__ = "integration_providers"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)  # "openai", "slack"
     display_name = Column(String(255), nullable=False)
     category = Column(String(50), nullable=True)  # "llm", "chat", "storage", "webhook"
