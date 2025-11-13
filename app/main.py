@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import health
+from app.routers import health, workflows
 from app.db import init_db
 
 
@@ -23,6 +23,7 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
+    app.include_router(workflows.router, prefix="/api")
 
     # Startup event: DB tablolarını oluştur
     @app.on_event("startup")
