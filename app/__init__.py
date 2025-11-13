@@ -1,0 +1,3 @@
+"""
+FlowMind Core API package.
+"""
