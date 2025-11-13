@@ -9,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set git identity
         run: |
@@ -19,8 +21,5 @@ jobs:
 
       - name: Push to Hugging Face Space
         run: |
-          # Hugging Face Space remote'unu ekle
           git remote add hf https://Caner7:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/flowmind-ai/flowmind-core-api
-
-          # main branch'i HF Space'e force push et
           git push hf HEAD:main --force
