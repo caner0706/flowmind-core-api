@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.config import settings
 
-# SQLite için connect_args gerekli, ileride PostgreSQL'e geçersek sadeleştiririz
+# SQLite için connect_args gerekli
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
@@ -21,3 +21,17 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def init_db():
+    """
+    Uygulama ayağa kalkarken tüm tabloları otomatik oluşturur.
+    Tabloların oluşması için app.models içindeki bütün SQLAlchemy modelleri
+    Base.metadata'ya register edilir.
+    """
+    # Buradaki import çok kritik:
+    #  - circular import engellenir
+    #  - modeller Base'e register edilir
+    from app import models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
