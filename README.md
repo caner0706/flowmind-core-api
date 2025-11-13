@@ -1,3 +1,14 @@
+---
+title: "FlowMind Core API"
+emoji: "🧠"
+colorFrom: "blue"
+colorTo: "purple"
+sdk: "docker"
+sdk_version: "0.0.0"
+app_file: "Dockerfile"
+pinned: false
+---
+
 # FlowMind Core API
 
 FlowMind, kullanıcıların teknik bilgiye ihtiyaç duymadan kendi yapay zeka otomasyon akışlarını oluşturabildiği bir platformdur.  
