@@ -1,10 +1,10 @@
-# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import init_db
-from app.routers import health, workflows  # varsa
+from app.routers import health, workflows
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -22,7 +22,7 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
-    app.include_router(workflows.router, prefix="/api")  # workflow router'ı böyleyse
+    app.include_router(workflows.router, prefix="/api")  # 🔴 sadece tek /api
 
     @app.on_event("startup")
     def on_startup():
