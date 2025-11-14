@@ -14,7 +14,7 @@ from app.schemas import (
 )
 
 router = APIRouter(
-    prefix="/api/workflows",
+    prefix="/workflows",
     tags=["workflows"],
 )
 
