@@ -1,6 +1,6 @@
 # app/schemas.py
 from datetime import datetime
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 
 from pydantic import BaseModel
 
@@ -11,7 +11,8 @@ from pydantic import BaseModel
 class WorkflowBase(BaseModel):
     name: str
     description: Optional[str] = None
-    graph_json: Any             # React Flow graph (nodes + edges)
+    # React Flow graph (nodes + edges)
+    graph_json: Dict[str, Any] = {}
     is_active: bool = True
 
 
@@ -22,7 +23,7 @@ class WorkflowCreate(WorkflowBase):
 class WorkflowUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    graph_json: Optional[Any] = None
+    graph_json: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
 
 
