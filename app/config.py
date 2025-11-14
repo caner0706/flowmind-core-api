@@ -1,5 +1,5 @@
 # app/config.py
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     ENV: str = "hf-space"
 
-    # SQLite kalıcı dosyası
+    # HF Spaces üzerinde kalıcı SQLite dosyası
+    # /data klasörü, Spaces'in persistent storage alanı
     DATABASE_URL: str = "sqlite:////data/flowmind.db"
 
     class Config:
