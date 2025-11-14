@@ -10,7 +10,6 @@ from app.schemas import (
     WorkflowCreate,
     WorkflowRead,
     WorkflowUpdate,
-    WorkflowList,
 )
 
 router = APIRouter(
@@ -19,16 +18,15 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=WorkflowList)
-def list_workflows(db: Session = Depends(get_db)) -> WorkflowList:
+@router.get("/", response_model=List[WorkflowRead])
+def list_workflows(db: Session = Depends(get_db)) -> List[WorkflowRead]:
     """Tüm workflow kayıtlarını listele."""
     workflows: List[models.Workflow] = (
         db.query(models.Workflow)
         .order_by(models.Workflow.created_at.desc())
         .all()
     )
-    # Wrapper model kullanıyoruz: {"items": [...]}
-    return WorkflowList(items=workflows)
+    return workflows
 
 
 @router.post(
