@@ -1,17 +1,17 @@
-from pydantic_settings import BaseSettings
+# app/config.py
+from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "FlowMind Core API"
     APP_VERSION: str = "0.1.0"
-    ENV: str = "hf-space"  # local, staging, prod vs. ileride ayırabiliriz
+    ENV: str = "hf-space"
 
-    # Şimdilik basit bir SQLite URL; ileride HF persistent storage ile özelleştiririz
-    DATABASE_URL = "sqlite:////data/flowmind.db"
+    # SQLite kalıcı dosyası
+    DATABASE_URL: str = "sqlite:////data/flowmind.db"
 
     class Config:
         env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 settings = Settings()
