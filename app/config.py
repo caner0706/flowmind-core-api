@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ENV: str = "hf-space"  # local, staging, prod vs. ileride ayırabiliriz
 
     # Şimdilik basit bir SQLite URL; ileride HF persistent storage ile özelleştiririz
-    DATABASE_URL: str = "sqlite:///./flowmind.db"
+    DATABASE_URL = "sqlite:////data/flowmind.db"
 
     class Config:
         env_file = ".env"
