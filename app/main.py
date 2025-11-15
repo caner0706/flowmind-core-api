@@ -10,6 +10,9 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
+        docs_url="/",                 # 👈 Swagger root’ta
+        redoc_url=None,               # İstersen açabilirsin
+        openapi_url="/openapi.json",  # OpenAPI JSON
     )
 
     app.add_middleware(
@@ -22,7 +25,7 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
-    app.include_router(workflows.router, prefix="/api")  # 🔴 sadece tek /api
+    app.include_router(workflows.router, prefix="/api")  # /api/workflows/ vs.
 
     @app.on_event("startup")
     def on_startup():
