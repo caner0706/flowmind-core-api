@@ -9,6 +9,7 @@ app_file: "Dockerfile"
 pinned: false
 ---
 
+
 # FlowMind Core API
 
 FlowMind, kullanıcıların teknik bilgiye ihtiyaç duymadan kendi yapay zeka otomasyon akışlarını oluşturabildiği bir platformdur.  
