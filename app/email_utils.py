@@ -8,6 +8,7 @@ from email.message import EmailMessage
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
+
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")  # Gmail adresin
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # App Password
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME)
