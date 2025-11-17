@@ -21,12 +21,17 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String, nullable=True)          # 👈 İsim (opsiyonel)
+    full_name = Column(String, nullable=True)          # İsim (opsiyonel)
     email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)     # 👈 Şifre hash’i
+    password_hash = Column(String, nullable=False)     # Şifre hash’i
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+
+    # ✅ Yeni alanlar: e-posta doğrulama için
+    is_email_verified = Column(Boolean, default=False)         # Doğrulandı mı?
+    verification_code = Column(String, nullable=True)          # Son gönderilen kod
+    verification_expires_at = Column(DateTime, nullable=True)  # Kodun son kullanma tarihi
 
     workflows = relationship("Workflow", back_populates="owner")
     chat_sessions = relationship("ChatSession", back_populates="user")
