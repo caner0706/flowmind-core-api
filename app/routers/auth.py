@@ -2,10 +2,10 @@
 from datetime import datetime
 from typing import Optional
 
+import hashlib
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from app.db import get_db
 from app import models
@@ -15,24 +15,38 @@ router = APIRouter(
     tags=["auth"],
 )
 
+# ---------- Helpers ----------
+
+def _hash_password(password: str) -> str:
+    """
+    Basit SHA256 hash (sadece dev/test için).
+    Üretim ortamında bcrypt/argon2 gibi güçlü bir yöntem tercih edilmeli.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    return _hash_password(password) == password_hash
+
 
 # ---------- Schemas ----------
 
 class RegisterRequest(BaseModel):
+    full_name: Optional[str] = None
     email: EmailStr
-    username: str
+    password: str = Field(min_length=6, max_length=128)
 
 
 class AuthUser(BaseModel):
     id: int
+    full_name: Optional[str] = None
     email: EmailStr
-    username: str
     created_at: datetime
 
 
 class LoginRequest(BaseModel):
-    # Hem email hem username kabul edelim
-    email_or_username: str
+    email: EmailStr
+    password: str
 
 
 class LoginResponse(BaseModel):
@@ -49,29 +63,22 @@ def register_user(
     db: Session = Depends(get_db),
 ) -> AuthUser:
     """
-    Çok basit register:
-    - email + username alır
-    - email veya username zaten varsa 400 döner
+    Kayıt:
+    - full_name (opsiyonel), email, password alır
+    - Email varsa 400 döner
+    - Şifreyi hashleyip kaydeder
     """
-    # Email kontrolü
-    existing_email = db.query(models.User).filter_by(email=payload.email).first()
-    if existing_email:
+    existing = db.query(models.User).filter_by(email=payload.email).first()
+    if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
 
-    # Username kontrolü
-    existing_username = db.query(models.User).filter_by(username=payload.username).first()
-    if existing_username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken",
-        )
-
     user = models.User(
+        full_name=payload.full_name,
         email=payload.email,
-        username=payload.username,
+        password_hash=_hash_password(payload.password),
     )
     db.add(user)
     db.commit()
@@ -79,8 +86,8 @@ def register_user(
 
     return AuthUser(
         id=user.id,
+        full_name=user.full_name,
         email=user.email,
-        username=user.username,
         created_at=user.created_at,
     )
 
@@ -91,35 +98,34 @@ def login(
     db: Session = Depends(get_db),
 ) -> LoginResponse:
     """
-    Çok basit login:
-    - email VEYA username ile giriş
-    - Şifre yok, sadece dev ortamı için.
+    Giriş:
+    - email + password alır
+    - Şifre doğrulanmazsa 401 döner
+    - access_token olarak şimdilik user.id string’i döner
     """
     user: Optional[models.User] = (
-        db.query(models.User)
-        .filter(
-            or_(
-                models.User.email == payload.email_or_username,
-                models.User.username == payload.email_or_username,
-            )
-        )
-        .first()
+        db.query(models.User).filter_by(email=payload.email).first()
     )
-
-    if not user:
+    if not user or not _verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
 
-    token = str(user.id)  # 👈 geçici token
+    # Last login güncelle
+    user.last_login = datetime.utcnow()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = str(user.id)  # 👈 geçici/dev token
 
     return LoginResponse(
         access_token=token,
         user=AuthUser(
             id=user.id,
+            full_name=user.full_name,
             email=user.email,
-            username=user.username,
             created_at=user.created_at,
         ),
     )
