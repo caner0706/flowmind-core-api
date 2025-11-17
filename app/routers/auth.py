@@ -17,6 +17,7 @@ router = APIRouter(
 
 # ---------- Helpers ----------
 
+
 def _hash_password(password: str) -> str:
     """
     Basit SHA256 hash (sadece dev/test için).
@@ -30,6 +31,7 @@ def _verify_password(password: str, password_hash: str) -> bool:
 
 
 # ---------- Schemas ----------
+
 
 class RegisterRequest(BaseModel):
     full_name: Optional[str] = None
@@ -57,7 +59,12 @@ class LoginResponse(BaseModel):
 
 # ---------- Endpoints ----------
 
-@router.post("/register", response_model=AuthUser, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register",
+    response_model=AuthUser,
+    status_code=status.HTTP_201_CREATED,
+)
 def register_user(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
