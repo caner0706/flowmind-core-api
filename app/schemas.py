@@ -17,9 +17,8 @@ class WorkflowBase(BaseModel):
 
 
 class WorkflowCreate(WorkflowBase):
-    owner_id: Optional[int] = None
-
-
+    pass  # 👈 artı bir field yok
+    
 class WorkflowUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
