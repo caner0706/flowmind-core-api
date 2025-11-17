@@ -9,6 +9,7 @@ uvicorn[standard]==0.30.3
 # ------------------------------------
 pydantic==2.8.2
 pydantic-settings==2.4.0
+email-validator==2.1.1   # 👈 BUNU EKLE
 
 # ------------------------------------
 # Database
@@ -21,9 +22,3 @@ aiosqlite==0.20.0
 # ------------------------------------
 python-multipart==0.0.9
 httpx==0.27.0
-
-# ------------------------------------
-# Auth (JWT + Password Hash)
-# ------------------------------------
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
