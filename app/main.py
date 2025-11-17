@@ -7,6 +7,7 @@ from app.db import init_db
 from app.routers import health, workflows, auth, admin  # 👈 admin eklendi
 
 
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
