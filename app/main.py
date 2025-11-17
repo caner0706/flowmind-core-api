@@ -25,8 +25,10 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
-    app.include_router(workflows.router, prefix="/api")  # /api/workflows/ vs.
+    app.include_router(auth.router, prefix="/api")       # 👈 /api/auth/...
+    app.include_router(workflows.router, prefix="/api")  # /api/workflows/..
 
+    
     @app.on_event("startup")
     def on_startup():
         init_db()
