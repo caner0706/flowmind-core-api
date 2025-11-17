@@ -77,53 +77,26 @@ def register_user(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
 ) -> AuthUser:
-    """
-    Kayıt:
-    - full_name (opsiyonel), email, password alır
-    - Email zaten varsa 400
-    - Şifreyi hashler
-    - Doğrulama kodu üretip mail gönderir
-    """
-    existing = db.query(models.User).filter_by(email=payload.email).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
-
-    verification_code = _generate_verification_code()
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
-
-    user = models.User(
-        full_name=payload.full_name,
-        email=payload.email,
-        password_hash=_hash_password(payload.password),
-        is_active=True,
-        is_verified=False,
-        verification_code=verification_code,
-        verification_expires_at=expires_at,
-    )
+    ...
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # ✉️ Doğrulama maili gönder
+    # Doğrulama kodu oluştur, DB'ye yaz, ama mail kısmını try/except'e al
+    code = create_verification_code(db, user)  # örnek fonksiyon
+
     try:
-        send_verification_email(user.email, verification_code)
+        send_verification_email(user.email, code)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"User created but failed to send verification email: {e}",
-        )
+        # Önemli: burada HTTPException fırlatma, sadece logla
+        print(f"[WARN] Verification email could not be sent: {e}")
 
     return AuthUser(
         id=user.id,
         full_name=user.full_name,
         email=user.email,
-        is_verified=user.is_verified,
         created_at=user.created_at,
     )
-
 
 @router.post("/verify-email", response_model=AuthUser)
 def verify_email(
