@@ -72,8 +72,12 @@ def get_workflow(
     Tek bir workflow getir.
     Sadece sahibiyse görebilir.
     """
-    wf = db.query(models.Workflow).filter_by(id=workflow_id).first()
-    if not wf or wf.owner_id != current_user.id:
+    wf = (
+        db.query(models.Workflow)
+        .filter_by(id=workflow_id, owner_id=current_user.id)
+        .first()
+    )
+    if not wf:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow not found",
@@ -92,8 +96,12 @@ def update_workflow(
     Workflow güncelle.
     Kullanıcı sadece kendi workflow'unu güncelleyebilir.
     """
-    wf = db.query(models.Workflow).filter_by(id=workflow_id).first()
-    if not wf or wf.owner_id != current_user.id:
+    wf = (
+        db.query(models.Workflow)
+        .filter_by(id=workflow_id, owner_id=current_user.id)
+        .first()
+    )
+    if not wf:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow not found",
@@ -119,8 +127,12 @@ def delete_workflow(
     Workflow sil.
     Kullanıcı sadece kendi workflow'unu silebilir.
     """
-    wf = db.query(models.Workflow).filter_by(id=workflow_id).first()
-    if not wf or wf.owner_id != current_user.id:
+    wf = (
+        db.query(models.Workflow)
+        .filter_by(id=workflow_id, owner_id=current_user.id)
+        .first()
+    )
+    if not wf:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow not found",
