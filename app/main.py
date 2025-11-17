@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import init_db
-from app.routers import health, workflows, auth   # 👈 auth da import edildi
+from app.routers import health, workflows, auth, admin  # 👈 admin eklendi
 
 
 def create_app() -> FastAPI:
@@ -27,8 +27,9 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
-    app.include_router(auth.router, prefix="/api")       # /api/auth/...
-    app.include_router(workflows.router, prefix="/api")  # /api/workflows/...
+    app.include_router(auth.router, prefix="/api")         # /api/auth/...
+    app.include_router(workflows.router, prefix="/api")    # /api/workflows/...
+    app.include_router(admin.router, prefix="/api")        # /api/admin/... 
 
     @app.on_event("startup")
     def on_startup():
