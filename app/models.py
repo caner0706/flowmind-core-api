@@ -21,10 +21,12 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, nullable=True)          # 👈 İsim (opsiyonel)
     email = Column(String, unique=True, index=True, nullable=False)
-    username = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False) 
+    password_hash = Column(String, nullable=False)     # 👈 Şifre hash’i
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
 
     workflows = relationship("Workflow", back_populates="owner")
     chat_sessions = relationship("ChatSession", back_populates="user")
