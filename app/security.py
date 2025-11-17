@@ -1,40 +1,46 @@
 # app/security.py
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app import models
 
-bearer_scheme = HTTPBearer(auto_error=False)
-
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    authorization: str = Header(None, alias="Authorization"),
     db: Session = Depends(get_db),
 ) -> models.User:
     """
-    Geçici / development auth:
-    - Authorization: Bearer <user_id>
-    header'ından user_id alır ve DB'den User döner.
-
-    Gerçek JWT / şifreli auth ileride eklenecek.
+    Çok basit auth:
+    - Header: Authorization: Bearer <user_id>
+    - <user_id> int'e çevrilir, DB'den user bulunur
     """
-    if credentials is None:
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing",
+            detail="Missing Authorization header",
         )
 
-    token = credentials.credentials
+    try:
+        scheme, token = authorization.split(" ")
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header format",
+        )
 
-    # Şimdilik token'ı direkt user_id gibi kullanıyoruz (int'e çevir).
+    if scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header must start with Bearer",
+        )
+
     try:
         user_id = int(token)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid auth token",
+            detail="Invalid token",
         )
 
     user = db.query(models.User).filter_by(id=user_id).first()
