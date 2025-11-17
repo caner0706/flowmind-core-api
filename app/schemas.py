@@ -8,6 +8,7 @@ from pydantic import BaseModel
 # ==============================
 # Workflow Schemas
 # ==============================
+
 class WorkflowBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -17,8 +18,10 @@ class WorkflowBase(BaseModel):
 
 
 class WorkflowCreate(WorkflowBase):
-    pass  # 👈 artı bir field yok
-    
+    # owner_id artık buradan gelmiyor; backend current_user'dan alıyor
+    pass
+
+
 class WorkflowUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -33,7 +36,7 @@ class WorkflowRead(WorkflowBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        orm_mode = True  # Pydantic v2 için uyarı verse de çalışıyor
 
 
 class WorkflowList(BaseModel):
@@ -42,6 +45,10 @@ class WorkflowList(BaseModel):
     class Config:
         orm_mode = True
 
+
+# ==============================
+# Basit User / Token şemaları (ileride işine yarar)
+# ==============================
 
 class UserBase(BaseModel):
     email: str
