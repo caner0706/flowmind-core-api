@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.db import get_db
 from app import models
@@ -19,16 +20,19 @@ router = APIRouter(
 
 class RegisterRequest(BaseModel):
     email: EmailStr
+    username: str
 
 
 class AuthUser(BaseModel):
     id: int
     email: EmailStr
+    username: str
     created_at: datetime
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Hem email hem username kabul edelim
+    email_or_username: str
 
 
 class LoginResponse(BaseModel):
@@ -46,17 +50,29 @@ def register_user(
 ) -> AuthUser:
     """
     Çok basit register:
-    - Sadece email alır
-    - Eğer email zaten varsa 400 döner
+    - email + username alır
+    - email veya username zaten varsa 400 döner
     """
-    existing = db.query(models.User).filter_by(email=payload.email).first()
-    if existing:
+    # Email kontrolü
+    existing_email = db.query(models.User).filter_by(email=payload.email).first()
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
 
-    user = models.User(email=payload.email)
+    # Username kontrolü
+    existing_username = db.query(models.User).filter_by(username=payload.username).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken",
+        )
+
+    user = models.User(
+        email=payload.email,
+        username=payload.username,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -64,6 +80,7 @@ def register_user(
     return AuthUser(
         id=user.id,
         email=user.email,
+        username=user.username,
         created_at=user.created_at,
     )
 
@@ -75,12 +92,20 @@ def login(
 ) -> LoginResponse:
     """
     Çok basit login:
-    - Eğer email kayıtlıysa token olarak user.id döner
+    - email VEYA username ile giriş
     - Şifre yok, sadece dev ortamı için.
     """
     user: Optional[models.User] = (
-        db.query(models.User).filter_by(email=payload.email).first()
+        db.query(models.User)
+        .filter(
+            or_(
+                models.User.email == payload.email_or_username,
+                models.User.username == payload.email_or_username,
+            )
+        )
+        .first()
     )
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,6 +119,7 @@ def login(
         user=AuthUser(
             id=user.id,
             email=user.email,
+            username=user.username,
             created_at=user.created_at,
         ),
     )
