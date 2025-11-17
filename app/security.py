@@ -1,61 +1,47 @@
 # app/security.py
-from datetime import datetime, timedelta
-from typing import Optional
-
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app import models
 
-# JWT ayarları – istersen config.py'ye taşıyabiliriz
-SECRET_KEY = "super-secret-key-degis"  # TODO: env'den al
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 gün
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    """
+    Geçici / development auth:
+    - Authorization: Bearer <user_id>
+    header'ından user_id alır ve DB'den User döner.
 
+    Gerçek JWT / şifreli auth ileride eklenecek.
+    """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+        )
+
+    token = credentials.credentials
+
+    # Şimdilik token'ı direkt user_id gibi kullanıyoruz (int'e çevir).
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: Optional[int] = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+        user_id = int(token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid auth token",
+        )
 
     user = db.query(models.User).filter_by(id=user_id).first()
-    if user is None:
-        raise credentials_exception
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
 
     return user
