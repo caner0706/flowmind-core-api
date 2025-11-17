@@ -1,14 +1,16 @@
 # app/routers/auth.py
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
-
 import hashlib
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app import models
+from app.config import settings
+from app.email_utils import send_verification_email
 
 router = APIRouter(
     prefix="/auth",
@@ -16,7 +18,6 @@ router = APIRouter(
 )
 
 # ---------- Helpers ----------
-
 
 def _hash_password(password: str) -> str:
     """
@@ -30,8 +31,15 @@ def _verify_password(password: str, password_hash: str) -> bool:
     return _hash_password(password) == password_hash
 
 
-# ---------- Schemas ----------
+def _generate_verification_code() -> str:
+    """
+    6 haneli sayısal kod üret (örnek: 483920).
+    İstersen burada length'i değiştirebilirsin.
+    """
+    return f"{secrets.randbelow(900000) + 100000}"  # 100000 - 999999
 
+
+# ---------- Schemas ----------
 
 class RegisterRequest(BaseModel):
     full_name: Optional[str] = None
@@ -57,14 +65,19 @@ class LoginResponse(BaseModel):
     user: AuthUser
 
 
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=16)
+
+
+class VerifyEmailResponse(BaseModel):
+    detail: str
+    user: AuthUser
+
+
 # ---------- Endpoints ----------
 
-
-@router.post(
-    "/register",
-    response_model=AuthUser,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/register", response_model=AuthUser, status_code=status.HTTP_201_CREATED)
 def register_user(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
@@ -74,6 +87,7 @@ def register_user(
     - full_name (opsiyonel), email, password alır
     - Email varsa 400 döner
     - Şifreyi hashleyip kaydeder
+    - E-posta doğrulama kodu oluşturur ve mail gönderir
     """
     existing = db.query(models.User).filter_by(email=payload.email).first()
     if existing:
@@ -82,20 +96,102 @@ def register_user(
             detail="Email already registered",
         )
 
+    # ✅ Şifre hashle
+    pwd_hash = _hash_password(payload.password)
+
+    # ✅ Doğrulama kodu üret
+    code = _generate_verification_code()
+    expires_at = datetime.utcnow() + timedelta(
+        minutes=settings.EMAIL_VERIFICATION_EXPIRE_MINUTES
+    )
+
+    # ✅ Kullanıcı kaydı
     user = models.User(
         full_name=payload.full_name,
         email=payload.email,
-        password_hash=_hash_password(payload.password),
+        password_hash=pwd_hash,
+        is_active=True,
+        is_email_verified=False,
+        verification_code=code,
+        verification_expires_at=expires_at,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # ✅ Mail gönder (SMTP yoksa sadece loglayacak)
+    send_verification_email(to_email=user.email, code=code)
 
     return AuthUser(
         id=user.id,
         full_name=user.full_name,
         email=user.email,
         created_at=user.created_at,
+    )
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(
+    payload: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+) -> VerifyEmailResponse:
+    """
+    Kullanıcı mailine gelen kodu doğrular:
+    - Email + code eşleşmezse 400
+    - Kod süresi geçmişse 400
+    - Başarılıysa is_email_verified = True yapılır
+    """
+    user: Optional[models.User] = (
+        db.query(models.User).filter_by(email=payload.email).first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found",
+        )
+
+    if user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already verified",
+        )
+
+    if not user.verification_code or not user.verification_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No verification code found, please register again.",
+        )
+
+    # Kod kontrolü
+    if payload.code.strip() != user.verification_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code",
+        )
+
+    # Süre kontrolü
+    if datetime.utcnow() > user.verification_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code expired, please register again.",
+        )
+
+    # ✅ Doğrulama başarılı
+    user.is_email_verified = True
+    user.verification_code = None
+    user.verification_expires_at = None
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return VerifyEmailResponse(
+        detail="Email verified successfully",
+        user=AuthUser(
+            id=user.id,
+            full_name=user.full_name,
+            email=user.email,
+            created_at=user.created_at,
+        ),
     )
 
 
@@ -107,7 +203,8 @@ def login(
     """
     Giriş:
     - email + password alır
-    - Şifre doğrulanmazsa 401 döner
+    - Şifre doğrulanmazsa 401
+    - Email doğrulanmamışsa 403
     - access_token olarak şimdilik user.id string’i döner
     """
     user: Optional[models.User] = (
@@ -117,6 +214,12 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
+        )
+
+    if not user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified",
         )
 
     # Last login güncelle
