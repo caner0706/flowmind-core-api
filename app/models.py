@@ -15,7 +15,7 @@ from app.db import Base
 
 
 # ============================================================
-# USERS (optional for now — ileride auth eklenecek)
+# USERS
 # ============================================================
 class User(Base):
     __tablename__ = "users"
@@ -25,11 +25,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
 
-    # 👇 Yeni alanlar
+    # Sadece basit durumlar için yeterli alanlar
     is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)       # email doğrulandı mı?
-    verification_code = Column(String, nullable=True)  # gönderilen kod
-    verification_expires_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
@@ -143,7 +140,3 @@ class ChatMessage(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("ChatSession", back_populates="messages")
-
-
-
-
