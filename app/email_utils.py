@@ -1,20 +1,23 @@
-# app/email_utils.py
-import smtplib
-from email.mime.text import MIMEText
+import requests
 from app.config import settings
 
-def send_verification_email(to_email: str, code: str):
-    # Eğer SMTP env'leri yoksa hiç deneme, sadece logla
-    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-        print("[WARN] SMTP not configured; skipping verification email.")
-        return
+RESEND_API_URL = "https://api.resend.com/emails"
 
-    msg = MIMEText(f"FlowMind doğrulama kodun: {code}")
-    msg["Subject"] = "FlowMind - E-posta Doğrulama"
-    msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
-    msg["To"] = to_email
+def send_verification_email(to_email: str, code: str) -> None:
+    if not settings.RESEND_API_KEY:
+        raise RuntimeError("RESEND_API_KEY is not set")
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-        server.starttls()
-        server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        server.send_message(msg)
+    payload = {
+        "from": settings.RESEND_FROM_EMAIL,
+        "to": [to_email],
+        "subject": "FlowMind Studio - Email Doğrulama Kodunuz",
+        "text": f"Doğrulama kodunuz: {code}",
+    }
+
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    resp = requests.post(RESEND_API_URL, json=payload, headers=headers, timeout=10)
+    resp.raise_for_status()
