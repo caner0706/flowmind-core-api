@@ -1,6 +1,7 @@
 # app/config.py
 import os
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings  # ✅ DÜZGÜN IMPORT (pydantic değil)
+
 
 class Settings(BaseSettings):
     APP_NAME: str = "FlowMind Core API"
@@ -9,7 +10,8 @@ class Settings(BaseSettings):
     # ===========================
     # Database (SQLite)
     # ===========================
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./flowmind.db")
+    # Eski path ile uyumlu: ./data/flowmind.db
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/flowmind.db")
 
     # ===========================
     # SMTP / Email settings
@@ -17,19 +19,20 @@ class Settings(BaseSettings):
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
 
-    SMTP_USERNAME: str | None = os.getenv("SMTP_USERNAME", None)  # Gmail adresi
-    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD", None)  # App Password
+    # Gmail adresin ve App Password ENV’den geliyor
+    SMTP_USERNAME: str | None = os.getenv("SMTP_USERNAME", None)
+    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD", None)
 
-    # From email gönderici (boş bırakılırsa SMTP_USERNAME kullanılır)
+    # Gönderici mail adresi (boşsa SMTP_USERNAME kullanılır)
     SMTP_FROM_EMAIL: str | None = os.getenv("SMTP_FROM_EMAIL", None)
 
-    # SMTP aktif mi? env yoksa otomatik False olur
     @property
     def SMTP_ENABLED(self) -> bool:
+        """
+        SMTP_USERNAME + SMTP_PASSWORD varsa True, yoksa False döner.
+        Böylece mail ayarı yoksa sistem patlamıyor, sadece mail atlamış oluyoruz.
+        """
         return bool(self.SMTP_USERNAME and self.SMTP_PASSWORD)
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()
