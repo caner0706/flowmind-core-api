@@ -13,15 +13,12 @@ from app.db import get_db
 from app import models
 from app.email_utils import send_verification_email
 
-# 🔹 Router
 router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
 
-# ============================================================
-# Helpers
-# ============================================================
+# ---------- Helpers ----------
 
 def _hash_password(password: str) -> str:
     """
@@ -40,28 +37,20 @@ def _generate_verification_code(length: int = 6) -> str:
     return "".join(random.choices(string.digits, k=length))
 
 
-def create_verification_code(
-    db: Session,
-    user: models.User,
-    ttl_minutes: int = 10,
-) -> str:
+def create_verification_code(db: Session, user: models.User, ttl_minutes: int = 10) -> str:
     """
-    Kullanıcı için DB üzerinde doğrulama kodu üretir ve süre atar.
+    Kullanıcı için doğrulama kodu üretir ve DB'ye yazar.
     """
     code = _generate_verification_code()
-    expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
-
     user.verification_code = code
-    user.verification_expires_at = expires_at
+    user.verification_expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
     db.add(user)
     db.commit()
     db.refresh(user)
-
     return code
 
-# ============================================================
-# Schemas
-# ============================================================
+
+# ---------- Schemas ----------
 
 class RegisterRequest(BaseModel):
     full_name: Optional[str] = None
@@ -93,9 +82,7 @@ class VerifyEmailRequest(BaseModel):
     code: str
 
 
-# ============================================================
-# Endpoints
-# ============================================================
+# ---------- Endpoints ----------
 
 @router.post("/register", response_model=AuthUser, status_code=status.HTTP_201_CREATED)
 def register_user(
@@ -116,22 +103,21 @@ def register_user(
             detail="Email already registered",
         )
 
-    # 1) Kullanıcıyı oluştur
     user = models.User(
         full_name=payload.full_name,
         email=payload.email,
         password_hash=_hash_password(payload.password),
-        is_verified=False,  # doğrulanana kadar false
+        is_active=True,
+        is_verified=False,
     )
-
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # 2) Doğrulama kodu oluştur ve DB'ye yaz
+    # Doğrulama kodu oluştur, DB'ye yaz
     code = create_verification_code(db, user)
 
-    # 3) Mail gönder (hata alırsa sadece logla, kayıt kalsın)
+    # Mail gönder - hata olursa kayıt silinmez, sadece loglanır
     try:
         send_verification_email(user.email, code)
     except Exception as e:
@@ -153,9 +139,6 @@ def verify_email(
 ) -> AuthUser:
     """
     Kullanıcı email + kod gönderir.
-    Kod doğru ve süresi geçmemişse:
-      - user.is_verified = True
-      - verification_code alanları temizlenir
     """
     user: Optional[models.User] = (
         db.query(models.User).filter_by(email=payload.email).first()
