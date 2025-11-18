@@ -13,13 +13,15 @@ from app.db import get_db
 from app import models
 from app.email_utils import send_verification_email
 
-# 🔹 Router'ı MUTLAKA global seviyede tanımlıyoruz
+# 🔹 Router
 router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
 
-# ---------- Helpers ----------
+# ============================================================
+# Helpers
+# ============================================================
 
 def _hash_password(password: str) -> str:
     """
@@ -38,7 +40,28 @@ def _generate_verification_code(length: int = 6) -> str:
     return "".join(random.choices(string.digits, k=length))
 
 
-# ---------- Schemas ----------
+def create_verification_code(
+    db: Session,
+    user: models.User,
+    ttl_minutes: int = 10,
+) -> str:
+    """
+    Kullanıcı için DB üzerinde doğrulama kodu üretir ve süre atar.
+    """
+    code = _generate_verification_code()
+    expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
+
+    user.verification_code = code
+    user.verification_expires_at = expires_at
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return code
+
+# ============================================================
+# Schemas
+# ============================================================
 
 class RegisterRequest(BaseModel):
     full_name: Optional[str] = None
@@ -70,33 +93,58 @@ class VerifyEmailRequest(BaseModel):
     code: str
 
 
-# ---------- Endpoints ----------
+# ============================================================
+# Endpoints
+# ============================================================
 
 @router.post("/register", response_model=AuthUser, status_code=status.HTTP_201_CREATED)
 def register_user(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
 ) -> AuthUser:
-    ...
+    """
+    Kayıt:
+    - full_name (opsiyonel), email, password alır
+    - Email varsa 400 döner
+    - Şifreyi hashleyip kaydeder
+    - Doğrulama kodu üretip mail gönderir
+    """
+    existing = db.query(models.User).filter_by(email=payload.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    # 1) Kullanıcıyı oluştur
+    user = models.User(
+        full_name=payload.full_name,
+        email=payload.email,
+        password_hash=_hash_password(payload.password),
+        is_verified=False,  # doğrulanana kadar false
+    )
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # Doğrulama kodu oluştur, DB'ye yaz, ama mail kısmını try/except'e al
-    code = create_verification_code(db, user)  # örnek fonksiyon
+    # 2) Doğrulama kodu oluştur ve DB'ye yaz
+    code = create_verification_code(db, user)
 
+    # 3) Mail gönder (hata alırsa sadece logla, kayıt kalsın)
     try:
         send_verification_email(user.email, code)
     except Exception as e:
-        # Önemli: burada HTTPException fırlatma, sadece logla
         print(f"[WARN] Verification email could not be sent: {e}")
 
     return AuthUser(
         id=user.id,
         full_name=user.full_name,
         email=user.email,
+        is_verified=user.is_verified,
         created_at=user.created_at,
     )
+
 
 @router.post("/verify-email", response_model=AuthUser)
 def verify_email(
@@ -105,6 +153,9 @@ def verify_email(
 ) -> AuthUser:
     """
     Kullanıcı email + kod gönderir.
+    Kod doğru ve süresi geçmemişse:
+      - user.is_verified = True
+      - verification_code alanları temizlenir
     """
     user: Optional[models.User] = (
         db.query(models.User).filter_by(email=payload.email).first()
