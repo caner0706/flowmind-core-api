@@ -1,6 +1,6 @@
 # app/config.py
 import os
-from pydantic_settings import BaseSettings  # ✅ DÜZGÜN IMPORT (pydantic değil)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -10,29 +10,26 @@ class Settings(BaseSettings):
     # ===========================
     # Database (SQLite)
     # ===========================
-    # Eski path ile uyumlu: ./data/flowmind.db
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/flowmind.db")
+    DATABASE_URL: str = "sqlite:///./data/flowmind.db"
 
     # ===========================
-    # SMTP / Email settings
+    # RESEND Email Settings
     # ===========================
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-
-    # Gmail adresin ve App Password ENV’den geliyor
-    SMTP_USERNAME: str | None = os.getenv("SMTP_USERNAME", None)
-    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD", None)
-
-    # Gönderici mail adresi (boşsa SMTP_USERNAME kullanılır)
-    SMTP_FROM_EMAIL: str | None = os.getenv("SMTP_FROM_EMAIL", None)
+    RESEND_API_KEY: str | None = os.getenv("RESEND_API_KEY")
+    RESEND_FROM_EMAIL: str = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 
     @property
-    def SMTP_ENABLED(self) -> bool:
+    def EMAIL_ENABLED(self) -> bool:
         """
-        SMTP_USERNAME + SMTP_PASSWORD varsa True, yoksa False döner.
-        Böylece mail ayarı yoksa sistem patlamıyor, sadece mail atlamış oluyoruz.
+        Email gönderimi aktif mi?
         """
-        return bool(self.SMTP_USERNAME and self.SMTP_PASSWORD)
+        return bool(self.RESEND_API_KEY)
+
+    # .env desteği açık kalsın (lokalde istersen kolay olur)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()
