@@ -15,7 +15,6 @@ def get_current_user(
     - Header: Authorization: Bearer <user_id>
     - <user_id> int'e çevrilir
     - Kullanıcı bulunur
-    - Email doğrulanmamışsa 403 döner
     """
     if not authorization:
         raise HTTPException(
@@ -37,7 +36,7 @@ def get_current_user(
             detail="Authorization must start with Bearer",
         )
 
-    # Token user_id olduğu için parse et
+    # Token = user_id
     try:
         user_id = int(token)
     except ValueError:
@@ -53,18 +52,13 @@ def get_current_user(
             detail="User not found",
         )
 
-    # ❗ Kullanıcı e-posta doğrulamadıysa erişim yok
-    if not user.is_email_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email is not verified",
-        )
+    # ❗ Email doğrulaması artık kaldırıldı → kontrol yok
 
-    # ❗ Kullanıcı aktif değilse
+    # ❗ Eğer kullanıcı aktif değilse (bu kuralı istersen tutabiliriz)
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is not active",
+            detail="User account disabled",
         )
 
     return user
